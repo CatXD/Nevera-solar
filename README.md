@@ -1,2 +1,2 @@
 # Nevera-solar
- Eso, una vevera solar de 50 W
+ Eso, una nevera solar de 50 W
