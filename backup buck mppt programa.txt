@@ -1,0 +1,101 @@
+g_nStepCount++;
+
+// In case of error, uncomment next two lines. Set *pnError to 1 and copy Error message to szErrorMsg
+ //*pnError=1;
+ //strcpy(szErrorMsg, "Place Error description here.");
+ 
+tiempo=t-t0; //actualizo tiempo
+
+
+Vbus=in[1];
+trig=in[2];
+Ip=in[3];
+
+switch (estado0)
+	{
+	case 0:		//OFF
+		d=0;
+		d_ref=0;
+		if (Vbus<=Vbus_ref*0.9)
+			{
+			estado0=1;
+			if (Ip <= Ip_vacio)
+				{
+				estado1=1;
+				Vp_vacio=in[0];
+				}
+			else
+				estado1=0;
+			t0=t;
+			tiempo=0;
+			}
+		break;
+	case 1:		//ON
+		switch (estado1)
+		{
+		case 0:		//paro para medir Vp_vacio
+			d=0;
+			d_ref=0;
+			if (Ip<=Ip_vacio || tiempo>=t_vacio) //espero a estabilizar la tension del panel
+				{
+				Vp_vacio=in[0]; //mido la tension de vacio
+				estado1=1;
+				t0=t;
+				tiempo=0;
+				}
+			break;
+
+		case 1:		//arranque suave
+			d_ref=Vbus/(0.8*Vp_vacio+Vbus); 
+			if (d_ref>1) d_ref=1;
+			if (d_ref<0) d_ref=0;
+			d=d_ref*(tiempo/t_subida); //elevo poco a poco el duty
+
+			if (d>=d_ref*0.95)
+				{
+				d=d_ref;
+				estado1=2;
+				tiempo=0;
+				t0=t;
+				}
+			break;
+
+		case 2:
+			d_ref=Vbus/(0.8*Vp_vacio+Vbus);
+			if (d_ref>1) d_ref=1;
+			if (d_ref<0) d_ref=0;
+			d=d_ref; //actualizo duty (supongo MP en 0.8 Vvacio)
+			if (tiempo>=t_muestreo)
+				{
+				d=0;
+				d_ref=0;
+				estado1=0;
+				tiempo=0;
+				t0=t;
+				}
+			break;
+		};
+		if (Vbus>=Vbus_ref*1.1)
+			{
+			tiempo=0;
+			t0=t;
+			estado1=0;
+			estado0=0;
+			d=0;
+			d_ref=0;
+			}
+		break;
+};
+
+if (d>1) d=1;
+if (d<0) d=0;
+
+//SALIDA PWM
+if (trig<=d) out[0]=1;
+else out[0]=0;
+
+//salidas de variables internas:
+out[1]=estado0;
+out[2]=estado1;
+
+out[3]=d;

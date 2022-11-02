@@ -1,0 +1,6 @@
+>>> Warning 202 "med_L.c" Line 8(7,24): Variable never used:   cuenta_ticks_tmr1
+>>> Warning 202 "med_L.c" Line 9(5,22): Variable never used:   cuenta_disponible
+>>> Warning 202 "med_L.c" Line 10(5,13): Variable never used:   midiendo
+      Memory usage:   ROM=17%      RAM=8% - 13%
+      0 Errors,  3 Warnings.
+Build Successful.

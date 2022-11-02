@@ -1,0 +1,111 @@
+//variables
+#include <Stdlib.h>
+#include <String.h>
+
+
+ int g_nInputNodes=0;
+ int g_nOutputNodes=0;
+
+ int g_nStepCount=0;
+
+//Variables:
+
+float tiempo=0, t0=0;
+
+float Vbus=0, Ibus=0;
+
+float Ip = 0, Vp = 0, Vp_vacio = 0, Vp_ref = 0, Vp_rampa = 0;
+
+float duty=0;
+
+float trig=0;
+
+int estado=0, estado_ans=0;
+
+int T1H = 0, T1L = 0;
+
+//constantes
+
+//constantes
+float t_start = 0.050;
+float t_stop = 0.01;
+float t_regper = 0.1;
+
+//Programas
+g_nStepCount++;
+
+// In case of error, uncomment next two lines. Set *pnError to 1 and copy Error message to szErrorMsg
+ //*pnError=1;
+ //strcpy(szErrorMsg, "Place Error description here.");
+ 
+
+tiempo=t-t0; //actualizo tiempo
+
+trig=in[0];
+Vp=in[1];
+Ip=in[2];
+Vbus=in[3];
+Ibus=in[4];
+
+switch (estado)
+{
+case 0:	//Parada para medir Vp vacio
+    duty = 0;
+    if ( estado != estado_ans)
+    {
+        t0 = t;
+        tiempo = 0;
+        estado_ans = estado;
+    }
+    if ( tiempo > t_stop && Vp > 1)
+    {
+        Vp_vacio = Vp;
+        Vp_ref = 0.8 * Vp;
+        estado = 1;		//soft start
+    }
+    break;
+
+case 1:    //soft start
+    if ( estado != estado_ans)
+    {
+        t0 = t;
+        tiempo = 0;
+        estado_ans = estado;
+    }
+
+    Vp_rampa = Vp_vacio - (Vp_vacio - Vp_ref)*(tiempo/t_start); //elevo poco a poco la tensión
+
+    duty = ((2*Vbus)/Vp_rampa)/6;
+
+    if (tiempo >= t_start)
+    {
+	estado = 2;
+    }
+    break;
+
+case 2:    //regimen permanente
+    if ( estado != estado_ans)
+    {
+        t0 = t;
+        tiempo = 0;
+        estado_ans = estado;
+    }
+    duty = ((2*Vbus)/Vp_ref)/6;
+
+    if (duty > 0.99) duty = 0.99;
+    if (duty < 0) duty = 0;
+    
+    if (tiempo >= t_regper) estado = 0;
+    break;
+}
+
+T1H= trig>=(1-duty)?1:0;
+T1L= trig<=(-1+duty)?1:0;
+
+T1H= trig>=(1-duty)?1:0;
+T1L= trig<=(-1+duty)?1:0;
+
+out[0] = T1H;
+out[1] = T1L;
+out[2] = estado;
+out[3] = duty;

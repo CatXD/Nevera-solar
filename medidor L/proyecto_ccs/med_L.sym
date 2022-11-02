@@ -1,0 +1,151 @@
+004-005 @WRITE_PROGRAM_MEMORY8.P1
+004-005 @READ_PROGRAM_MEMORY8.P2
+005.0   RA0
+005     PORTA
+005.1   RA1
+005.2   RA2
+005.3   RA3
+005.3   Pulsador
+005.4   RA4
+005.5   Mosfet
+005.5   RA5
+005.6   RA6
+005.7   RA7
+006     PORTB
+006     lcd
+006.0   RB0
+006.1   RB1
+006.2   RB2
+006.3   RB3
+006.4   RB4
+006.5   RB5
+006.6   RB6
+006.7   RB7
+015     CCP_1
+015     CCP_1_LOW
+016     CCP_1_HIGH
+020     @INTERRUPT_AREA
+021     @INTERRUPT_AREA
+022     @INTERRUPT_AREA
+023     @INTERRUPT_AREA
+024     @INTERRUPT_AREA
+025     @INTERRUPT_AREA
+026     @INTERRUPT_AREA
+027     @INTERRUPT_AREA
+028     @INTERRUPT_AREA
+029     @INTERRUPT_AREA
+02A     @INTERRUPT_AREA
+02B     @INTERRUPT_AREA
+02C-02D contador_ticks_tmr1
+02E-02F cuenta_ticks_tmr1
+030     cuenta_disponible
+031     midiendo
+032-033 ticks_ref
+034     presalida_mosfet
+035-036 valor_adc
+037     lcd_init.i
+037-038 @PRINTF_LU_644.P1
+037-038 @MUL1616.P2
+037     @PSTRINGCN7_644.P3
+037     lcd_reset.i
+038     lcd_init.@SCRATCH1
+038     @PSTRINGCN7_644.@SCRATCH1
+039-03A @MUL1616.P1
+039     @PSTRINGCN7_644.@SCRATCH2
+039     @PRINTF_LU_644.@SCRATCH1
+03A     @PSTRINGCN7_644.@SCRATCH3
+03A     @PRINTF_LU_644.@SCRATCH2
+03B     @MUL1616.@SCRATCH1
+03B     @PSTRINGCN7_644.@SCRATCH4
+03B     @PRINTF_LU_644.@SCRATCH3
+03C     @PRINTF_LU_644.@SCRATCH4
+03D     @PRINTF_LU_644.@SCRATCH5
+03E     @PRINTF_LU_644.@SCRATCH6
+03F     @PRINTF_LU_644.@SCRATCH7
+040     lcd_putc.c
+041     lcd_gotoxy.x
+041     @delay_ms1.P1
+042     lcd_gotoxy.y
+043     lcd_gotoxy.address
+044     lcd_gotoxy.@SCRATCH1
+045     lcd_send_byte.address
+046     lcd_send_byte.n
+047     lcd_read_byte.low
+047     lcd_send_byte.@SCRATCH1
+048     lcd_read_byte.high
+048     lcd_send_nibble.n
+049     lcd_read_byte.@SCRATCH1
+077     @SCRATCH
+078     @SCRATCH
+078     _RETURN_
+079     @SCRATCH
+07A     @SCRATCH
+085.0   TRISA0
+085     TRISA
+085.1   TRISA1
+085.2   TRISA2
+085.3   TRISA3
+085.4   TRISA4
+085.5   TRISA5
+085.6   TRISA6
+085.7   TRISA7
+086     TRISB
+086     tris_lcd
+09C.6   C1OUT
+09C.7   C2OUT
+10D-10E @WRITE_PROGRAM_MEMORY8.P1
+10D-10E @READ_PROGRAM_MEMORY8.P2
+
+ROM Allocation:
+000053  LCD_INIT_STRING.call
+000057  LCD_INIT_STRING.data
+00005B  TIMER1_isr
+000076  @const674.call
+000080  @delay_ms1
+000095  lcd_send_nibble
+0000A1  lcd_send_byte
+0000A2  lcd_read_byte
+0000D8  lcd_init
+000105  lcd_reset
+000121  @MUL1616
+000137  lcd_putc
+000157  lcd_gotoxy
+000183  @PSTRINGCN7_644
+0001DB  @PRINTF_LU_644
+00023F  MAIN
+00023F  @cinit1
+00025A  @cinit2
+
+Project Directory:
+    C:\Users\cxdso\Desktop\UNIOVI\Proyectos independientes\Nevera\medidor L\proyecto_ccs\
+
+Project Files:
+    med_L.c                                                 [26-abr.-21 19:59  CRC=98DEBA95]
+    med_L.h                                                 [14-abr.-21 21:41  CRC=2106EAD1]
+    ..\..\..\..\..\..\..\..\Program Files (x86)\PICC\Devices\16F88.h [12-nov.-13 15:34  CRC=A5FBA8D9]
+    Control_LCD.c                                           [14-abr.-21 21:30  CRC=4D38CF1A]
+
+Source signature=FA52EC73
+
+Units:
+    med_L (main)
+
+Compiler Settings:
+    Processor:      PIC16F88
+    Pointer Size:   16
+    ADC Range:      0-1023
+    Opt Level:      9
+    Short,Int,Long: UNSIGNED: 1,8,16
+    Float,Double:   32,32
+
+Output Files:
+    XREF file:   med_L.xsym
+    Errors:      med_L.err
+    Ext Symbols: med_L.esym
+    INHX8:       med_L.hex
+    Symbols:     med_L.sym
+    List:        med_L.lst
+    Debug/COFF:  med_L.cof
+    Project:     med_L.ccspjt
+    Call Tree:   med_L.tre
+    Statistics:  med_L.STA

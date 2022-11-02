@@ -1,0 +1,318 @@
+////////////////////////////////////////////////////////////////////////////
+////           Funciones para manejo de LCD con driver                  //// 
+////                                                                    ////
+////                                                                    ////
+////************************************************************************
+////////////////////////////////////////////////////////////////////////////
+////   La escritura la hace en el orden habitual:                       ////
+////   primero se escribe el nibble de la parte alta y luego parte baja ////
+////                                                                    ////
+////   Definimos una directiva de compilacion que nos permitirá cambiar ////    
+////   el orden en el que escribimos los nibbles en el LCD. Si no       ////
+////   esta comentada, significa que operamos de la forma habitual      ////
+////   y mandamos primero la parte alta                                 ////
+
+#define  LCD_OM16214 //Si se dispone de una placa con modelo que no sea OM16214, se debe comentar esta línea
+                       //Si el modelo es OM16214 debe aparecer la línea sin comentar
+//// ***********************************************************************
+////////////////////////////////////////////////////////////////////////////
+
+// La conexion del LCD se realiza con pines del PORTC:
+//
+//     RB7  
+//     RB6 es E
+//     RB5   es RW
+//     RB4  es RS
+//     RB3  es D7
+//     RB2  es D6
+//     RB1  es D5
+//     RB0  es D4
+//   
+
+//Declaramos una variable que se llama "lcd" de tipo estructura, con varios campos.
+//Estamos declarando en total ocho bits. Los primero que se definan van a ser los bits
+//mas bajos. Asi que estamos definiendo los pins segun la conexion de la placa.
+//El ultimo bit, controla la alimentación del LCD. En nuestro caso, como va a estar
+//conectado siempre a Vcc, lo definimos como "nada".
+
+
+struct lcd_pin_map {  
+         int       
+            data : 4;          // las 4 líneas bajas serán las de datos (menos peso)
+            
+            
+            BOOLEAN rs;        //RC5 será rs    
+            BOOLEAN rw;        //RC6 será rw          
+            BOOLEAN enable;    //RC7 será enable    
+            BOOLEAN nada;      //Pin que no usamospara nada
+            
+        } lcd;
+
+
+// Asigno el lcd al puerto C. Hacemos la asignación de la dirección de manera directa
+
+#locate lcd = 0x06      //Dirección del puerto B: PORTB en dirección 0x06
+
+//Estamos colocando la variable "lcd" en el puerto B.
+
+#byte tris_lcd = 0x86   //Para definir la dirección de los datos en el PORTB
+
+//Con esto, cargamos el registro de la direccion de datos, definiendo los puertos
+//como salidas o entradas.
+
+//NOTA: como no controlamos el pin Vcc del display (que controla la alimentacion), y lo 
+//conectamos directamente a +5V, en las funciones definidas se ha eliminado la linea 
+//correspondiente que encendia o apagaba el LCD.
+
+
+
+#define lcd_type 2           // 0=5x7, 1=5x10, 2=2 lines
+#define lcd_line_two 0x40    // LCD RAM address for the second line
+
+/////////////////////////////////////////////////////////////////////////////////////////////
+// La constante LCD_INIT_STRING[4] recoge los 4 códigos de inicialización que se envian
+// al LCD y son muy importantes. Se deben cambiar para adaptar a otras necesidades.
+/////////////////////////////////////////////////////////////////////////////////////////////
+
+BYTE const LCD_INIT_STRING[4] = {0x28, 0x0C, 0x01, 0x06};
+//
+// El significado de los códigos es el siguiente:
+// 0x28 = 0010 1000 = 001 DL  N F **
+// entonces DL=0 control a 4 bits (DL=0 sería control con 8 bits)
+// N =1 significa 2 lineas  (N=0 sería 1 línea)
+// F=0 significa, caracteres 5x8  (F=1 sería 5x10)
+//
+// 0x0C = 0000 1100 = 0000 1 D C B
+// es el control de display ON/OFF
+// D=1 significa diaplay ON
+// C=0 significa cursor OFF (puede interesar poner C=1 para ver donde esta el cursor)
+// B=0 sigifica parpadeo del cursor OFF
+//
+// 0x01 = 0000 0001 significa borrar display
+//
+// 0x06 = 0000 0110 = 0000 01 I/D S
+// selecciona el modo de funcionamiento (Entry mode set)
+// I/D = 1 significa incremento automatico del cursor
+// S = 0 sifnifica sin desplazamiento del display
+//
+
+//Prototipos de las funciones posteriores
+void lcd_init();
+void lcd_reset();
+
+byte lcd_read_byte();
+void lcd_send_nibble(byte n);
+void lcd_send_byte(byte address, byte n);
+void lcd_gotoxy(byte x, byte y);
+void lcd_putc(char c);
+char lcd_getc(byte x, byte y);
+void lcd_clr_line(char fila);
+void lcd_set_cgram(char cgram_p);
+
+/////////////////////////////////////////////////////////////////////////////////////////////
+// Lee el byte señalado por el puntero, 1º parte baja, 2º parte alta
+// Si al llamar a esta función rs=0, devuelve busy flag (BF) (+signif.) y dirección actual
+/////////////////////////////////////////////////////////////////////////////////////////////
+// OJO: Este LCD recoge los nibbles en orden inverso a los demás LCD: primero parte baja y 
+// luego la parte alta
+/////////////////////////////////////////////////////////////////////////////////////////////
+
+BYTE lcd_read_byte() {
+      BYTE low,high;
+      tris_lcd = 0b00001111;    //Se definen las líneas bajas como entradas
+      lcd.rw = 1;
+      delay_cycles(1);
+      lcd.enable = 1;
+      delay_cycles(1);
+      #IFDEF LCD_OM16214  //Directiva decompilación adicional. Si esta definida, lo hace.
+        high = lcd.data;  //con modelo LCD_OM16214 se lee primero la parte alta (lo habitual)
+      #ELSE
+        low = lcd.data; // Con LCD_SO1602 se lee primero la parte baja (ES AL REVÉS QUE EN OTROS LCDs)
+      #ENDIF
+      
+      lcd.enable = 0;
+      delay_cycles(1);
+      lcd.enable = 1;
+      delay_us(1);
+      
+      #IFDEF LCD_OM16214
+        low = lcd.data;   //con modelo OM16214 se lee después la parte baja (más habitual)
+      #ELSE
+        high = lcd.data; // Con LCD_SO1602 se lee despues la parte alta (AL REVÉS QUE EN OTROS LCDs)
+      #ENDIF
+
+      lcd.enable = 0;
+      tris_lcd = 0b00000000;    //Volvemos a dejar el PORTD como puerto de salida
+      return( (high<<4) | low);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////
+// Envía medio byte, los 4 bits más bajos de n
+// Necesario poner rs y rw de modo adecuado y entrar con enable=0
+/////////////////////////////////////////////////////////////////////////////////////////////
+
+void lcd_send_nibble( BYTE n ) {
+      lcd.data = n;
+      delay_cycles(1);
+      lcd.enable = 1;
+      delay_us(2);
+      lcd.enable = 0;
+}
+
+/////////////////////////////////////////////////////////////////////////////////////////////
+// Envía un byte (n) al registro de instrucciones (si address=0) o reg. de datos (address=1)
+// Utiliza lcd_send_nibble(n) enviando primero nibble alto del byte
+/////////////////////////////////////////////////////////////////////////////////////////////
+
+void lcd_send_byte( BYTE address, BYTE n ) {
+
+      lcd.rs = 0;
+      while ( bit_test(lcd_read_byte(),7) ) ;
+     //
+     //delay_us(100);
+      lcd.rs = address;
+      delay_cycles(1);
+      lcd.rw = 0;
+      delay_cycles(1);
+      lcd.enable = 0;
+      lcd_send_nibble(n >> 4);
+      lcd_send_nibble(n & 0xf);
+ 
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////
+/// Función que inicializa el LCD, se deberían cambiar bits para cambiar configuracion
+///////////////////////////////////////////////////////////////////////////////////////////
+void lcd_init() {
+    BYTE i;
+    tris_lcd = 0b00000000;  //PORTC de salida
+    lcd.rs = 0;
+    lcd.rw = 0;
+    lcd.enable = 0;
+    
+   
+   //Envíos para resetear por software el LCD
+    delay_ms(15);
+    for(i=1;i<=3;++i) {
+       lcd_send_nibble(3);
+       delay_ms(5);
+    }
+    lcd_send_nibble(2);
+    /////fin del reseteo por software
+    
+    //Se envían ahora los comandos de inicialización
+    for(i=0;i<=3;++i){
+       lcd_send_byte(0,LCD_INIT_STRING[i]);
+      delay_ms(5);
+   }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////
+/// Función que resetea el LCD por software
+///////////////////////////////////////////////////////////////////////////////////////////
+void lcd_reset()
+{
+    BYTE i;
+    tris_lcd = 0b00000000;
+    lcd.rs = 0;
+    lcd.rw = 0;
+    lcd.enable = 0;
+   
+   
+   //Envíos para resetear por software el LCD
+    delay_ms(15);
+    for(i=1;i<=3;++i) {
+       lcd_send_nibble(0x03);
+       delay_ms(5);
+    }
+    lcd_send_nibble(0x02);
+    /////fin del reseteo por software
+
+
+}
+/////////////////////////////////////////////////////////////////////////////////////////////
+// Sitúa el contador de direcciones en la DDRAM (para lectura o escritura posterior)
+// x puede ir de 1 a 40, posición dentro de una línea (16 visibles)
+// y puede ser 1 (línea 1) o 2 (línea 2)
+/////////////////////////////////////////////////////////////////////////////////////////////
+
+void lcd_gotoxy( BYTE x, BYTE y) {
+   BYTE address;
+
+   if(y!=1)
+     address=lcd_line_two;
+   else
+     address=0;
+   address+=x-1;
+   lcd_send_byte(0,0b10000000|address);
+}
+
+////////////////////////////////////////////////////////////////////////////////////////////
+// Envía un carácter c a la DDRAM del LCD, también algunos caracteres de control
+//Poniendolo entre comillas simples estamos mandando el caracter, es decir, estamos
+//mandando el codigo ASCII. 
+////////////////////////////////////////////////////////////////////////////////////////////
+
+void lcd_putc( char c) 
+{
+   switch (c) {
+     case '\f'   : lcd_send_byte(0,1);    //Limpia la pantalla
+                   delay_ms(2);
+                   break;
+     case '\n'   : lcd_gotoxy(1,2);       //Coloca puntero en 1ª posicion de la 2ª línea
+                   break;
+     case '\b'   : lcd_send_byte(0,0x10); //Retrocede una posición el cursor
+                   break;
+     case '\t'   : lcd_send_byte(0,0x14); //Avanza una posición el cursor
+                   break;
+     case '\r'   : lcd_send_byte(0,0x18); //Retrocede una posición la pantalla visible
+                   break;
+     case '\v'   : lcd_send_byte(0,0x1C); //Avanza una posición la pantalla visible
+                   break;
+     default     : lcd_send_byte(1,c);    //Envía caracter a DDRAM,
+                   break;                 //Si es una tira, los envía todos uno a uno
+             }
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////
+// Devuelve el carácter situado en la posición x,y de la DDRAM
+///////////////////////////////////////////////////////////////////////////////////////////
+
+char lcd_getc( BYTE x, BYTE y) {
+   char value;
+
+    lcd_gotoxy(x,y);
+    while ( bit_test(lcd_read_byte(),7) ); // espera a que el flag de ocupado esté a 0
+    lcd.rs=1;
+    value = lcd_read_byte();
+    lcd.rs=0;
+    return(value);
+}
+
+////////////////////////////////////////////////////////////////////////////////////
+// Limpia la linea correspondiente y se situa al principio de la misma            //
+////////////////////////////////////////////////////////////////////////////////////
+void lcd_clr_line(char fila)
+{
+   int j;
+
+   lcd_gotoxy(1,fila);
+    for (j=0;j<40;j++) lcd_putc(' ');
+
+    lcd_gotoxy(1,fila);
+}
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Función que coloca el puntero en una dirección de la CGRAM para definir luego nuevos caracteres       //
+///////////////////////////////////////////////////////////////////////////////////////////////////////////
+void lcd_set_cgram(char cgram_p)
+{
+   lcd_send_byte(0,0b01000000|cgram_p);   //Las direcciones de CGRAM empiezan por 01xxxxxx
+}
+
+
+
+
+
+
+
+

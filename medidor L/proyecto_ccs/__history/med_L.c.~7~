@@ -1,0 +1,40 @@
+#include <med_L.h>
+#include "Control_LCD.c"
+
+int16 contador_ticks_tmr1 = 0;
+
+
+#INT_TIMER1
+void  TIMER1_isr(void) 
+{
+
+}
+
+
+#INT_COMP
+void  COMP_isr(void) 
+{
+
+}
+
+void main()
+{
+   setup_timer_0(RTCC_INTERNAL|RTCC_DIV_4|RTCC_8_bit);      //1,0 ms overflow
+
+   setup_comparator(NC_NC_A1_A2); //Senal C2OUT desde RA1 y RA2
+   
+   enable_interrupts(INT_TIMER1);
+   enable_interrupts(INT_COMP);
+   enable_interrupts(GLOBAL);
+
+   while(TRUE)
+   {
+    
+      
+      
+      
+      
+      
+   }
+
+}

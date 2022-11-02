@@ -1,0 +1,63 @@
+#include <med_L.h>
+#include "Control_LCD.c"
+
+#define precarca_TMR1 65036
+
+
+int16 contador_ticks_tmr1 = 0;
+int16 cuenta_ticks_tmr1 = 0;
+int cuenta_disponible = 0;
+int midiendo = 0;
+
+
+
+
+#INT_TIMER1
+void  TIMER1_isr(void) 
+{
+   //set_timer1(precarca_TMR1);
+   if(midiendo)
+      contador_ticks_tmr1++;
+}
+
+
+#INT_COMP
+void  COMP_isr(void) 
+{
+   cuenta_ticks_tmr1 = contador_ticks_tmr1;
+   
+   cuenta_disponible = 1;
+}
+
+void main()
+{
+   setup_timer_0(RTCC_INTERNAL|RTCC_DIV_4|RTCC_8_bit);      //1,0 ms overflow
+
+   setup_comparator(NC_NC_A1_A2); //Senal C2OUT-RA4- desde RA1 y RA2
+   
+   enable_interrupts(INT_TIMER1);
+   enable_interrupts(INT_COMP);
+   enable_interrupts(GLOBAL);
+
+   //set_timer1(65036);
+   lcd_init();
+   lcd_reset();
+
+   while(TRUE)
+   {
+    
+      while (!Pulsador){}  //Espero a pulsación
+      printf(LCD_putc,"Midiendo...");
+      contador_ticks_tmr1 = 0;
+      midiendo = 1;
+      set_timer1(precarca_TMR1);
+      
+      while (!cuenta_disponible ){} //Espero a acabar medida
+      midiendo = 0;
+      cuenta_disponible = 0;
+      //calculo cuenta
+      printf(LCD_putc,"%Lu", cuenta_ticks_tmr1);
+      
+   }
+
+}
